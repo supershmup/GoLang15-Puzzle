@@ -13,9 +13,14 @@ type err_t struct {
 	when time.Time
 	what string
 }
+
+type move_t struct {
+	i int
+	j int
+	val int
+}
 func printBoard(board [][]int) (ii int, jj int) {
 	fmt.Printf("The board is:\n")
-
 	for i := 0; i < cap(board); i++ {
 		fmt.Printf("[")
 		for j := 0; j < cap(board[i]); j++ {
@@ -43,8 +48,8 @@ func checkBoard(board [][]int) bool {
 	return true
 }
 
-func createBoard(size int) [][]int {
-	vals := make([]bool, size*size)
+func createBoard(size int) ([][]int, /*err*/ int) {
+	values := make([]bool, size*size)
 	rand.Seed(int64(time.Now().Nanosecond()))
 	board := make([][]int, size)
 	for i := range board {
@@ -55,36 +60,62 @@ func createBoard(size int) [][]int {
 		for j := 0; j < size; j++ {
 			board[i][j] = -1
 			temp := rand.Intn(size * size)
-			if vals[temp] {
+			if values[temp] {
 				j--
 				continue
 			}
-			vals[temp] = true
+			values[temp] = true
 			board[i][j] = temp + 1
 		}
 	}
-	return board
+	return board ,0
 }
 
 func updateBoard(board [][]int, dir int) {
 
 }
-func printOpts2(board [][]int, i int, j int) {
-	fmt.Println("Enter the number to swap with the blank space in order to organize the numbers from 1 to ",cap(board)* cap(board) - 1)
+func getOpts(board [][]int, i int, j int) (move []move_t, err int) {
+
+
 	if i != 0 {
-		fmt.Println("type ", board[i-1][j]," to move")
+		move = append(move, move_t{i: i-1, j: j, val: board[i-1][j]})
 	}
 	if i != cap(board)-1 {
-		fmt.Println("type ", board[i+1][j]," to move")
+		move = append(move, move_t{i: i+1, j: j, val: board[i+1][j]})
 	}
 	if j != 0 {
-		fmt.Println("type ", board[i][j-1]," to move")
+		move = append(move, move_t{i: i, j: j-1, val: board[i][j-1]})
 	}
 	if j != cap(board[i])-1 {
-		fmt.Println("type ", board[i][j+1]," to move")
+		move = append(move, move_t{i: i, j: j+1, val: board[i][j+1]})
 	}
+	return
 }
-func printOpts(board [][]int, i int, j int) {
+func printOpts(values[]int, size int) (err int){
+	fmt.Println("Enter the number to swap with the blank space in order to organize the numbers from 1 to ",size * size - 1)
+	for _,value := range values {
+		fmt.Println("type ", value," to move")
+	}
+	return 0
+}
+func getplayerMove(values []int) (idx int,err int) {
+	reader := bufio.NewReader(os.Stdin)
+	valueStr, _ := reader.ReadString('\n')
+	valueStr = strings.ToLower(valueStr[:len(valueStr)-1])
+	val, error := strconv.ParseInt(valueStr,10,8)
+	if error!= nil {
+		fmt.Println(error.Error())
+		return 0,1
+	}
+	for i,value := range values {
+		if int(val) == value{
+			return i,0
+		}
+	}
+	return 0,1
+}
+/*
+func printOpts2(board [][]int, i int, j int) {
 	fmt.Println("Write the direction to move the blank in order to organize the numbers from 1 to ",cap(board)* cap(board) - 1)
 	if i != 0 {
 		fmt.Println("press Up to move Up")
@@ -190,32 +221,54 @@ func getMotion(board [][]int, i int, j int) (ii int, jj int, err err_t) {
 		}
 	}
 	return ii, jj, err
-}
+}*/
 
-func swapBoard(board [][]int, i int, j int, ii int, jj int) {
+func swapBoard(board [][]int, i int, j int, move move_t) (err int) {
 	temp := board[i][j]
-	board[i][j] = board[ii][jj]
-	board[ii][jj] = temp
-
+	board[i][j] = board[move.i][move.j]
+	board[move.i][move.j] = temp
+	return 0
 }
 func main() {
 	fmt.Println("Please enter the size of the board:")
 	reader := bufio.NewReader(os.Stdin)
 	input, _ := reader.ReadString('\n')
 	input = input[:len(input)-1]
-	size, err := strconv.ParseInt(input,10,8)
-	if err!= nil {
-		fmt.Println(err.Error())
+	size, error := strconv.ParseInt(input,10,8)
+	if error!= nil {
+		fmt.Println(error.Error())
 		return
 	}
-	board := createBoard(int(size))
+	board ,err:= createBoard(int(size))
+	if err ==  1 {
+		fmt.Println("error")
+		return
+	}
 	for ; checkBoard(board) == false; {
 		i, j := printBoard(board)
-		printOpts2(board, i, j)
-		ii, jj:= getMotion2(board, i, j)
+		moves,err := getOpts(board,i,j)
+		if err ==  1 {
+			fmt.Println("No available moves")
+			return
+		}
+		var values []int
+		for _,move:=range moves {
+			values = append(values,  move.val)
+		}
+		printOpts(values, int(size))
+		idx,err := getplayerMove(values)
+		if err ==  1 {
+			fmt.Println("error: Bad move Option, try again!")
+			continue
+		}
+
 		//printOpts(board, i, j)
 		//ii, jj, _:= getMotion(board, i, j)
-		swapBoard(board, i, j, ii, jj)
+		err = swapBoard(board, i, j, moves[idx])
+		if err ==  1 {
+			fmt.Println("Error")
+			return
+		}
 	}
 	fmt.Println("Well Done yuo won!")
 	fmt.Print("Press 'Enter' to continue...")
