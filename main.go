@@ -307,12 +307,13 @@ func main() {
 			fmt.Println("bad input: ", input, " try again")
 			break
 		}
+		if err == 1 {
+			fmt.Println("Error")
+			os.Exit(err)
+		}
 	}
 
-	if err == 1 {
-		fmt.Println("Error")
-		os.Exit(err)
-	}
+
 	fmt.Print("Press 'Enter' to continue...")
 	bufio.NewReader(os.Stdin).ReadBytes('\n')
 }
