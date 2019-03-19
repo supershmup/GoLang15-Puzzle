@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"runtime"
@@ -11,11 +12,6 @@ import (
 	"time"
 )
 
-type err_t struct {
-	when time.Time
-	what string
-}
-
 type move_t struct {
 	i   int
 	j   int
@@ -23,11 +19,12 @@ type move_t struct {
 }
 
 func errChk(errCond bool) (b bool) {
+	errStr := []string{"Wait, What?", "Why did you do that?", "what are you? QA?", "Hello, what are you testing me?",
+		"Is it on purpose?", "Come on!"}
 	if errCond {
-		// notice that we're using 1, so it will actually log the where
-		// the error happened, 0 = this function, we don't want that.
 		pc, fn, line, _ := runtime.Caller(1)
 
+		fmt.Println("[error]", errStr[rand.Intn(cap(errStr))])
 		fmt.Printf("[error] in %s[%s:%d]\n", runtime.FuncForPC(pc).Name(), fn, line)
 		b = true
 	}
@@ -130,7 +127,7 @@ func getOpts(board [][]int, i int, j int) (move []move_t, err int) {
 func printOpts(values []int, size int) (err int) {
 	fmt.Println("Enter the number to swap with the blank space in order to organize the numbers from 1 to ", size*size-1)
 	for _, value := range values {
-		fmt.Println("type ", value, " to move")
+		fmt.Println("type ", value, " to move ", value, " to the blank space")
 	}
 	return 0
 }
@@ -159,10 +156,10 @@ func swapBoard(board [][]int, i int, j int, move move_t) (err int) {
 	if errChk(j >= cap(board[i]) || j < 0) {
 		return 1
 	}
-	if errChk(move.i >= cap(board)|| move.i < 0) {
+	if errChk(move.i >= cap(board) || move.i < 0) {
 		return 1
 	}
-	if errChk(move.j >= cap(board[move.i])|| move.j < 0) {
+	if errChk(move.j >= cap(board[move.i]) || move.j < 0) {
 		return 1
 	}
 	if errChk(move.val != board[move.i][move.j]) {
@@ -171,7 +168,9 @@ func swapBoard(board [][]int, i int, j int, move move_t) (err int) {
 	if errChk(cap(board)*cap(board[i]) != board[i][j]) {
 		return 1
 	}
-
+	if errChk(int(math.Abs(float64(i-move.i))) != 1 && int(math.Abs(float64(j-move.j))) != 1) {
+		return 1
+	}
 	temp := board[i][j]
 	board[i][j] = board[move.i][move.j]
 	board[move.i][move.j] = temp
@@ -226,7 +225,7 @@ func play() (err int) {
 			plays++
 		}
 	}
-	fmt.Println("Well Done you won in ", plays,"!")
+	fmt.Println("Well Done you won in ", plays, "!")
 	return 0
 }
 func test() (err int) {
@@ -248,8 +247,12 @@ func test() (err int) {
 	moves[3] = move_t{i: 0, j: 3, val: 12}
 	moves[4] = move_t{i: 3, j: 3, val: 12}
 	for idx := range sizes {
+		fmt.Println("******************************************************************************")
+		fmt.Println("TEST number: ", idx, " Starting")
 		ret := validateBoard(boards[idx], sizes[idx])
 		if ret != expRet[idx] {
+			fmt.Println("TEST number: ", idx, " Failed")
+			fmt.Println("******************************************************************************")
 			return 1
 		} else {
 			if expRet[idx] == 0 {
@@ -258,6 +261,8 @@ func test() (err int) {
 					moves_, err := getOpts(boards[idx], i, j)
 					if errChk(err == 1) {
 						fmt.Println("No available moves")
+						fmt.Println("TEST number: ", idx, " Failed")
+						fmt.Println("******************************************************************************")
 						return -1
 					}
 					var values []int
@@ -266,10 +271,11 @@ func test() (err int) {
 					}
 					err = printOpts(values, int(sizes[idx]))
 					if errChk(err == 1) {
+						fmt.Println("TEST number: ", idx, " Failed")
+						fmt.Println("******************************************************************************")
 						return -1
 					}
-					fmt.Println("plays = ",plays)
-					fmt.Println("idx = ",idx)
+					fmt.Println("plays = ", plays)
 					err = swapBoard(boards[idx], i, j, moves[plays])
 					if err == 1 {
 						fmt.Println("Bad move")
@@ -278,21 +284,29 @@ func test() (err int) {
 				}
 			}
 		}
+		fmt.Println("TEST number: ", idx, " Success")
+		fmt.Println("******************************************************************************")
 	}
 	fmt.Println("Very Good Tests Are Ok")
 	return 0
 }
 func main() {
-	fmt.Println("Please enter play to play or test to test:")
-	reader := bufio.NewReader(os.Stdin)
-	input, _ := reader.ReadString('\n')
-	input = input[:len(input)-1]
 	err := 0
-	switch input {
-	case "test":
-		err = test()
-	case "play":
-		err = play()
+	for {
+		fmt.Println("Please type \"play\" to play or \"test\" to test:")
+		reader := bufio.NewReader(os.Stdin)
+		input, _ := reader.ReadString('\n')
+		input = input[:len(input)-1]
+
+		switch input {
+		case "test":
+			err = test()
+		case "play":
+			err = play()
+		default:
+			fmt.Println("bad input: ", input, " try again")
+			break
+		}
 	}
 
 	if err == 1 {
